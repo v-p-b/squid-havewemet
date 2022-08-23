@@ -75,7 +75,7 @@ while True:
             url_parsed.params,
             urlencode(query),
             url_parsed.fragment,
-        ).geturl()
+        ).geturl() # Let's hope this can't introduce XSS :P
         db.addToken(hwm_uuid)
         print("ERR message=%s" % (new_url), flush=True)
 con.close()
