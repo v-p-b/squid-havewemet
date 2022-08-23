@@ -2,13 +2,22 @@
 import sys
 import sqlite3
 import uuid
-from urllib.parse import unquote, urlparse, urlunparse, urlencode, parse_qsl, ParseResult
+from urllib.parse import (
+    unquote,
+    urlparse,
+    urlunparse,
+    urlencode,
+    parse_qsl,
+    ParseResult,
+)
 
 # Wrapper class to hide DB implementation
 class DbConnector(object):
     def __init__(self):
-        self.con=sqlite3.connect("havewemet.db")
-        self.con.execute("create table if not exists netlocs(netloc varchar(255) unique)")
+        self.con = sqlite3.connect("havewemet.db")
+        self.con.execute(
+            "create table if not exists netlocs(netloc varchar(255) unique)"
+        )
         self.con.execute("create table if not exists tokens(token varchar(255))")
 
     def getNetloc(self, netloc):
@@ -36,6 +45,7 @@ class DbConnector(object):
                 self.con.execute("delete from tokens where token = ? ", [token])
                 return True
 
+
 db = DbConnector()
 
 while True:
@@ -47,18 +57,23 @@ while True:
     if "HAVEWEMETUUID" in query:
         if db.getToken(query["HAVEWEMETUUID"]):
             db.addNetloc(netloc)
-            print("OK", flush = True)
+            print("OK", flush=True)
         else:
             # TODO Alert?
             pass
     elif db.getNetloc(netloc):
-        print("OK", flush = True)
+        print("OK", flush=True)
     else:
-        hwm_uuid=str(uuid.uuid4())
+        hwm_uuid = str(uuid.uuid4())
         query.update({"HAVEWEMETUUID": hwm_uuid})
         new_url = ParseResult(
-                url_parsed.scheme, url_parsed.netloc, url_parsed.path,
-                url_parsed.params, urlencode(query), url_parsed.fragment).geturl()
+            url_parsed.scheme,
+            url_parsed.netloc,
+            url_parsed.path,
+            url_parsed.params,
+            urlencode(query),
+            url_parsed.fragment,
+        ).geturl()
         db.addToken(hwm_uuid)
-        print("ERR message=%s" % (new_url), flush = True)
+        print("ERR message=%s" % (new_url), flush=True)
 con.close()
