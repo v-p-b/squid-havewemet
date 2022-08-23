@@ -1,7 +1,7 @@
 Squid - Have We Met?
 =====================
 
-This is a Squid-based Proof of Concept implementation of a security proxy that requires user confirmation if a destination host was never encountered before by the proxy.
+This is a Squid-based Proof of Concept implementation of a security proxy that requires user confirmation if a destination service was never encountered before by the proxy.
 
 This concept was mentioned at least at the following places (if you know of more, please open an Issue or PR!):
 * https://www.slideshare.net/FlorianRoth2/ransomware-resistance
@@ -43,7 +43,8 @@ TODO
 ----
 
 * Implement for saner open-source proxies
-* Other backends?
+* Performance benchmarks, optimization
+* Other DB backends?
 
 
 Security
