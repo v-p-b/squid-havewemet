@@ -2,25 +2,63 @@
 import sys
 import sqlite3
 import uuid
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, urlunparse, urlencode, parse_qsl, ParseResult
 
-con=sqlite3.connect("havewemet.db")
+# Wrapper class to hide DB implementation
+class DbConnector(object):
+    def __init__(self):
+        self.con=sqlite3.connect("havewemet.db")
+        self.con.execute("create table if not exists netlocs(netloc varchar(255) unique)")
+        self.con.execute("create table if not exists tokens(token varchar(255))")
 
-con.execute("create table if not exists netlocs(netloc varchar(255) unique)")
-con.execute("create table if not exists tokens(token varchar(255))")
+    def getNetloc(self, netloc):
+        with self.con:
+            res = self.con.execute("select * from netlocs where netloc = ? ", [netloc])
+            if res.fetchone() is None:
+                return False
+            else:
+                return True
+
+    def addNetloc(self, netloc):
+        with self.con:
+            self.con.execute("insert into netlocs(netloc) values (?)", [netloc])
+
+    def addToken(self, token):
+        with self.con:
+            self.con.execute("insert into tokens(token) values (?)", [token])
+
+    def getToken(self, token):
+        with self.con:
+            res = self.con.execute("select * from tokens where token = ? ", [token])
+            if res.fetchone() is None:
+                return False
+            else:
+                self.con.execute("delete from tokens where token = ? ", [token])
+                return True
+
+db = DbConnector()
 
 while True:
     info = sys.stdin.readline()
-    url = unquote(info.split(" ")[0])
+    url = unquote(info.split(" ")[0].strip())
     url_parsed = urlparse(url)
+    query = dict(parse_qsl(url_parsed.query))
     netloc = url_parsed.netloc
-    """
-    with con:
-        res = con.execute("select * from netlocs where netloc = ?", netloc)
-        if res.fetchone() is None:
-            uuid = str(uuid.uuid4())
-            con.execute("insert into tokens(token) values (?)", uuid)
-            print("ERR message=%s" % (uuid), flush = True)
-    """
-    print("ERR message=%s" % (uuid), flush = True)
+    if "HAVEWEMETUUID" in query:
+        if db.getToken(query["HAVEWEMETUUID"]):
+            db.addNetloc(netloc)
+            print("OK", flush = True)
+        else:
+            # TODO Alert?
+            pass
+    elif db.getNetloc(netloc):
+        print("OK", flush = True)
+    else:
+        hwm_uuid=str(uuid.uuid4())
+        query.update({"HAVEWEMETUUID": hwm_uuid})
+        new_url = ParseResult(
+                url_parsed.scheme, url_parsed.netloc, url_parsed.path,
+                url_parsed.params, urlencode(query), url_parsed.fragment).geturl()
+        db.addToken(hwm_uuid)
+        print("ERR message=%s" % (new_url), flush = True)
 con.close()
