@@ -1,4 +1,40 @@
 Squid - Have We Met?
 =====================
 
-error.html -> /usr/share/squid/errors/templates (Documentation is a lie)
+This is a Squid-based Proof of Concept implementation of a security proxy that requires user confirmation if a destination host was never encountered before by the proxy.
+
+This concept was mentioned at least at the following places (if you know of more, please open an Issue or PR!):
+* https://www.slideshare.net/FlorianRoth2/ransomware-resistance
+
+Since I couldn't find an open-source implementation, I created one. This implementation allows experimentation with the concept but it is in no way meant for production use!
+
+
+Usage
+-----
+
+### Debian
+
+- Extract files under `/opt/havewemet` and provide execute access to the proxy user on the `havewemet` script!
+- Copy `havewemet.conf` to `/etc/squid/conf.d/`!
+- Copy `havewemet.html` to `/usr/share/squid/errors/templates` (Documentation is a lie, absolute paths don't work :P). This page definitely needs some better security UX, PR's are welcome!
+- Restart Squid!
+
+
+Known issues
+------------
+
+* This won't work if some malware expects the splash page and extracts the verification token
+
+
+TODO
+----
+
+* Implement for saner open-source proxies
+* Other backends?
+
+
+Security
+--------
+
+While it is already established that *there is no warranty* for this software and it should not be used in production, I'm still interested in any security issues you can find. Feel free to use the Issue tracker to file a bug!
+
