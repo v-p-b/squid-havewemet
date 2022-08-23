@@ -11,6 +11,8 @@ from urllib.parse import (
     ParseResult,
 )
 
+TOKEN_NAME = "HAVEWEMETUUID"
+
 # Wrapper class to hide DB implementation
 class DbConnector(object):
     def __init__(self):
@@ -54,8 +56,8 @@ while True:
     url_parsed = urlparse(url)
     query = dict(parse_qsl(url_parsed.query))
     netloc = url_parsed.netloc
-    if "HAVEWEMETUUID" in query:
-        if db.getToken(query["HAVEWEMETUUID"]):
+    if TOKEN_NAME in query:
+        if db.getToken(query[TOKEN_NAME]):
             db.addNetloc(netloc)
             print("OK", flush=True)
         else:
@@ -65,7 +67,7 @@ while True:
         print("OK", flush=True)
     else:
         hwm_uuid = str(uuid.uuid4())
-        query.update({"HAVEWEMETUUID": hwm_uuid})
+        query.update({TOKEN_NAME: hwm_uuid})
         new_url = ParseResult(
             url_parsed.scheme,
             url_parsed.netloc,
