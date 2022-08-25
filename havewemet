@@ -12,6 +12,7 @@ from urllib.parse import (
 )
 
 TOKEN_NAME = "HAVEWEMETUUID"
+ENFORCE = True
 
 # Wrapper class to hide DB implementation
 class DbConnector(object):
@@ -56,8 +57,8 @@ while True:
     url_parsed = urlparse(url)
     query = dict(parse_qsl(url_parsed.query))
     netloc = url_parsed.netloc
-    if TOKEN_NAME in query:
-        if db.getToken(query[TOKEN_NAME]):
+    if (not ENFORCE) or (TOKEN_NAME in query):
+        if (not ENFORCE) or (db.getToken(query[TOKEN_NAME])):
             db.addNetloc(netloc)
             print("OK", flush=True)
         else:
