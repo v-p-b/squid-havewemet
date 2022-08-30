@@ -17,7 +17,7 @@ ENFORCE = True
 # Wrapper class to hide DB implementation
 class DbConnector(object):
     def __init__(self):
-        self.con = sqlite3.connect("havewemet.db")
+        self.con = sqlite3.connect(":memory:")
         self.con.execute(
             "create table if not exists netlocs(netloc varchar(255) unique)"
         )
