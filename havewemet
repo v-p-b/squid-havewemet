@@ -21,8 +21,12 @@ class DbConnector(object):
         self.con.execute(
             "create table if not exists netlocs(netloc varchar(255) unique)"
         )
-        self.con.execute("create table if not exists tokens(token varchar(255))")
+        self.con.execute("create table if not exists tokens(token char(36))")
+        self.con.execute("create table if not exists sessions(hash char(64), time timestamp default current_timestamp)")
 
+        self.con.execute("create unique index if not exists netloc_idx on netlocs(netloc)")
+        self.con.execute("create unique index if not exists token_idx on tokens(token)")
+        self.con.execute("create unique index if not exists sess_idx on sessions(hash)")
     def getNetloc(self, netloc):
         with self.con:
             res = self.con.execute("select * from netlocs where netloc = ? ", [netloc])
@@ -33,7 +37,7 @@ class DbConnector(object):
 
     def addNetloc(self, netloc):
         with self.con:
-            self.con.execute("insert into netlocs(netloc) values (?)", [netloc])
+            self.con.execute("insert or ignore into netlocs(netloc) values (?)", [netloc])
 
     def addToken(self, token):
         with self.con:
@@ -48,6 +52,20 @@ class DbConnector(object):
                 self.con.execute("delete from tokens where token = ? ", [token])
                 return True
 
+    def getSession(self, h):
+        with self.con:
+            self.con.execute("delete from sessions where time < datetime('now', '-1 minute')")
+            res = self.con.execute("select * from sessions where hash = ?", [h])
+            if res.fetchone() is None:
+                return False
+            else:
+                return True
+        pass
+
+    def addSession(self, h):
+        with self.con:
+            self.con.execute("insert or ignore into sessions(hash) values (?)", [h])
+
 
 db = DbConnector()
 
@@ -57,8 +75,9 @@ while True:
     url_parsed = urlparse(url)
     query = dict(parse_qsl(url_parsed.query))
     netloc = url_parsed.netloc
-    if (not ENFORCE) or (TOKEN_NAME in query):
-        if (not ENFORCE) or (db.getToken(query[TOKEN_NAME])):
+    sess_hash=""
+    if (not ENFORCE) or (TOKEN_NAME in query) or db.getSession(sess_hash):
+        if (not ENFORCE) or (db.getToken(query[TOKEN_NAME])) or db.getSession(sess_hash):
             db.addNetloc(netloc)
             print("OK", flush=True)
         else:
