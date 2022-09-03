@@ -52,7 +52,7 @@ Known issues
 
 TLS is tricky: When we get a CONNECT request to an HTTPS service we haven't met before, we need to serve the error page, while the HTTP proxy connection is still plaintext. When we respond with a plaintext body in the connection which the client thinks should be encrypted, browsers freak out. 
 
-We can overcome this by intercepting the TLS connection when a deny ACL is returned by `havewemet`. For this, Squid's ssl-bump feature can be used as described [here](https://askto.pro/question/how-to-make-deny_info-work-with-https-in-squid#comment-1705438). Only problem is that due to (now resolved?) license incompatibilities many distros don't ship their packages with this feature, so I gave in, and started to build a container for this whole thing...
+We can overcome this by intercepting the TLS connection when a deny ACL is returned by `havewemet`. For this, Squid's ssl-bump feature can be used as described [here](https://askto.pro/question/how-to-make-deny_info-work-with-https-in-squid#comment-1705438). Only problem is that due to (now resolved?) [license incompatibilities](https://bugs.launchpad.net/ubuntu/+source/squid/+bug/1895579) many distros don't ship their packages with this feature, so I gave in, and started to build a container for this whole thing...
 
 But this is still not enough. When connecting to HTTPS hosts, the CONNECT request only includes the netloc, but not the full URL (that would include our token), so we can't verify the request.
 
