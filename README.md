@@ -40,7 +40,7 @@ How Does It Work?
 
 We have a database of known network locations (netlocs - hostname + port, from Python's `urllib`).
 
-If a request's netloc is not in the database, we display an error page that includes a dynamically generated link to the original URL (no JavaScript, yay!), extended with a unique, random generated token, that we keep track of in the DB too. (This of course only works for user-initiated GET requests.)
+If a request's netloc is not in the database, we display an error page that includes a dynamically generated link including a unique, random generated token (no JavaScript, yay!), that we keep track of in the DB too. (This of course only works for user-initiated GET requests.)
 
 The check is implemented in an external ACL script referenced by Squid. Squid passes the request URL to the script, and the script answers with a pass/fail result, that can also include a message - this message contains the dynamic URL with the confirmation token, that is inserted to the error page displayed for the user. 
 
