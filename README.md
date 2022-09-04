@@ -55,7 +55,7 @@ But this is still not enough. When connecting to HTTPS hosts, the CONNECT reques
 
 So instead of manipulating the request towards the original destination, we introduce a web service on the proxy to verify tokens, and redirect here from block pages. This host must be defined as a proxy exclusion on the clients. To preserve the original URL (that is not visible to the proxy until TLS is stripped), we instruct the browser to always send Referer headers from the block page. This allows us to respond with a 302 redirect when a valid token is encountered. 
 
-# Caching
+### Caching
 
 We want to avod caching the block pages, so TTL must be set to 0 for the external ACL.
 
