@@ -77,6 +77,8 @@ TODO
 * Performance benchmarks, optimization
 * Other DB backends?
 * Caching is now globally disabled in Squid, but I don't think this is necessary, as deny_info behavior is related to the external_acl TTL setting not the regular cache. 
+* Properly resolve parser differentials when handling CONNECT requests with netlocs and GET's with full URL's 
+
 
 Security
 --------
