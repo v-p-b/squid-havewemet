@@ -46,6 +46,7 @@ The check is implemented in an external ACL script referenced by Squid. Squid pa
 
 The netloc is inserted to the database if a request with a known token in an appropriately named URL parameter is encountered. 
 
+
 ### TLS
 
 TLS is tricky: When we get a CONNECT request to an HTTPS service we haven't met before, we need to serve the error page, while the HTTP proxy connection is still plaintext. When we respond with a plaintext body in the connection which the client thinks should be encrypted, browsers freak out. 
@@ -54,30 +55,41 @@ We can overcome this by intercepting the TLS connection when a deny ACL is retur
 
 But this is still not enough. When connecting to HTTPS hosts, the CONNECT request only includes the netloc, but not the full URL (that would include our token), so we can't verify the request.
 
-So instead of manipulating the request towards the original destination, we introduce a web service on the proxy to verify tokens, and redirect here from block pages. This host must be defined as a proxy exclusion on the clients. To preserve the original URL (that is not visible to the proxy until TLS is stripped), we instruct the browser to always send Referer headers from the block page. This allows us to respond with a 302 redirect when a valid token is encountered. 
+So instead of manipulating the request towards the original destination, we introduce a web service on the proxy to verify tokens, and redirect here from block pages. This host must be defined as a proxy exclusion on the clients. To preserve the original URL (that is not visible to the proxy until TLS is stripped), we instruct the browser to always send Referer headers from the block page. This allows us to respond with a 302 redirect when a valid token is encountered. I wanted to avoid having a separate service, in part because this architecture architecture already introduced multiple parser-differentials, that is a PITA to maintain. In a production-grade implementation I would probably use a common library in both components for translating data coming in from Squid and whatever HTTP server/reverse proxy serves the verifier web service.
 
-### Caching
+
+### Proxy Caching
 
 We want to avod caching the block pages, so TTL must be set to 0 for the external ACL.
+
+
+### Multiple origins 
+
+Modern websites are rarely served from a single domain. For now we set client IP's to a 5 seconds "learn mode" after a site is whitelisted - during this period all requests from the client IP is allowed and automatically whitelisted. 
+
+This still doesn't resolve the problem of sites that legitimately serve content from quasi-random subdomains (think YouTube, or github.io). This will require wildcard-based netloc matching, which is a TODO. 
+
 
 Known issues
 ------------
 
-* Modern websites are rarely served from a single domain. It is a TODO to handle browser sessions to multiple backend domains transparently.
 * This won't work if some malware expects the splash page and extracts the verification token. This is outside of our threat model.
 * Tokens and netlocs are not connected. I couldn't see a plausible attack vector for this, if you find one, please use the Issue tracker!
 * Duplicate GET parameters in the original request are probably not handled properly.
 * Sites with HSTS and HPKP are not supported
+* The current solution for multi-origin websites won't work for clients behind NAT
+    * It's unclear if BasicHTTPRequestHandler will ever set the client address to an FQDN instead of an IP - if this happen, the mapping between the Squid ACL helper and our verifier service will break
+
 
 TODO
 ----
 
-* Handle background dependencies of websites transparently (CDN's, backend API's, YouTube's anti-adblock content domains, etc.)
 * Implement for saner open-source proxies
 * Performance benchmarks, optimization
 * Other DB backends?
 * Caching is now globally disabled in Squid, but I don't think this is necessary, as deny_info behavior is related to the external_acl TTL setting not the regular cache. 
 * Properly resolve parser differentials when handling CONNECT requests with netlocs and GET's with full URL's 
+* Support netloc wildcards
 
 
 Security

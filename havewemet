@@ -42,6 +42,9 @@ class HaveWeMetHandler(BaseHTTPRequestHandler):
                 netloc += ":443"
             logger.info("Adding '%s'" % (netloc))
             srvDb.addNetloc(netloc)
+            client_addr = self.client_address[0]
+            logger.info("Client as seen by service: '%s'" % (client_addr))
+            srvDb.addSession(client_addr)
             self.send_response(302)
             self.send_header("Location", referer)
             self.end_headers()
@@ -113,7 +116,7 @@ class DbConnector(object):
     def getSession(self, h):
         with self.con:
             self.con.execute(
-                "delete from sessions where time < datetime('now', '-1 minute')"
+                "delete from sessions where time < datetime('now', '-5 second')"
             )
             res = self.con.execute("select * from sessions where hash = ?", [h])
             if res.fetchone() is None:
@@ -148,13 +151,13 @@ while True:
     info = sys.stdin.readline()
     logger.info(info)
     netloc = info.split(" ")[0].strip()
+    client_ip = info.split(" ")[1].strip()
     if info.startswith("http"):
         url = unquote(info.split(" ")[0].strip())
         url_parsed = urlparse(url)
         netloc = url_parsed.netloc
     logger.info("Netloc: '%s'" % (netloc))
-    sess_hash = ""
-    if not ENFORCE:
+    if not ENFORCE or db.getSession(client_ip):
         db.addNetloc(netloc)
     if db.getNetloc(netloc):
         logger.info("Letting '%s' pass" % (netloc))
@@ -173,5 +176,5 @@ while True:
         ).geturl()  # Let's hope this can't introduce XSS :P
 
         db.addToken(hwm_uuid)
-        print("ERR message=%s" % (new_url), flush=True)
+        print("ERR message=\"%s\"" % (new_url), flush=True)
 con.close()
