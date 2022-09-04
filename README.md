@@ -33,6 +33,7 @@ docker run -it -p3128:3128 -p8899:8899 havewemet
 * Point your HTTP proxy to localhost:3128
 * Add havewemet.local->127.0.0.1 to your hosts file
 * Set havewemet.local(:8899) as a proxy exclusion
+* Install the generated proxy certificate
 
 How Does It Work?
 -----------------
