@@ -15,13 +15,16 @@ from urllib.parse import (
     ParseResult,
 )
 
+# Constants
+
 TOKEN_NAME = "HAVEWEMETUUID"
 ENFORCE = True
 SRVHOST = "0.0.0.0"
-SRVPORT = 8899 
+SRVPORT = 8899
 SRVURL = "http://havewemet.local"
 
 TOKEN_RE = re.compile("%s=([0-9a-f-]+)" % (TOKEN_NAME))
+
 
 class HaveWeMetHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -32,11 +35,11 @@ class HaveWeMetHandler(BaseHTTPRequestHandler):
             referer = self.headers["Referer"]
         if token_matcher is not None:
             token = token_matcher.group(1)
-        if (referer is not None) and (token is not None) and ((not ENFORCE) or (srvDb.getToken(token))):
+        if (referer is not None) and (token is not None) and (srvDb.getToken(token)):
             url_parsed = urlparse(referer)
             netloc = url_parsed.netloc
-            if ":" not in netloc and url_parsed.scheme == 'https':
-                    netloc += ":443"
+            if ":" not in netloc and url_parsed.scheme == "https":  # Lame workaround
+                netloc += ":443"
             logger.info("Adding '%s'" % (netloc))
             srvDb.addNetloc(netloc)
             self.send_response(302)
@@ -53,13 +56,14 @@ class HaveWeMetHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+
 def startServerThread():
     # We need another SQLite connection for the new thread
-    global srvDb # TODO don't use globals
+    global srvDb  # TODO don't use globals
     srvDb = DbConnector()
     server = HTTPServer((SRVHOST, SRVPORT), HaveWeMetHandler)
     server.serve_forever()
-    
+
 
 # Wrapper class to hide DB implementation
 class DbConnector(object):
@@ -69,11 +73,16 @@ class DbConnector(object):
             "create table if not exists netlocs(netloc varchar(255) unique)"
         )
         self.con.execute("create table if not exists tokens(token char(36))")
-        self.con.execute("create table if not exists sessions(hash char(64), time timestamp default current_timestamp)")
+        self.con.execute(
+            "create table if not exists sessions(hash char(64), time timestamp default current_timestamp)"
+        )
 
-        self.con.execute("create unique index if not exists netloc_idx on netlocs(netloc)")
+        self.con.execute(
+            "create unique index if not exists netloc_idx on netlocs(netloc)"
+        )
         self.con.execute("create unique index if not exists token_idx on tokens(token)")
         self.con.execute("create unique index if not exists sess_idx on sessions(hash)")
+
     def getNetloc(self, netloc):
         with self.con:
             res = self.con.execute("select * from netlocs where netloc = ? ", [netloc])
@@ -84,7 +93,9 @@ class DbConnector(object):
 
     def addNetloc(self, netloc):
         with self.con:
-            self.con.execute("insert or ignore into netlocs(netloc) values (?)", [netloc])
+            self.con.execute(
+                "insert or ignore into netlocs(netloc) values (?)", [netloc]
+            )
 
     def addToken(self, token):
         with self.con:
@@ -101,7 +112,9 @@ class DbConnector(object):
 
     def getSession(self, h):
         with self.con:
-            self.con.execute("delete from sessions where time < datetime('now', '-1 minute')")
+            self.con.execute(
+                "delete from sessions where time < datetime('now', '-1 minute')"
+            )
             res = self.con.execute("select * from sessions where hash = ?", [h])
             if res.fetchone() is None:
                 return False
@@ -114,16 +127,21 @@ class DbConnector(object):
             self.con.execute("insert or ignore into sessions(hash) values (?)", [h])
 
 
+# Global variables
+
 db = DbConnector()
 srvDb = None
 
 logger = logging.getLogger("havewemet")
 logger.setLevel(logging.DEBUG)
 
-fh = logging.FileHandler('/tmp/spam.log')
+fh = logging.FileHandler("/tmp/spam.log")
 logger.addHandler(fh)
 
-srvThread = threading.Thread(target = startServerThread)
+
+# Entry point
+
+srvThread = threading.Thread(target=startServerThread)
 srvThread.start()
 
 while True:
@@ -135,15 +153,16 @@ while True:
         url_parsed = urlparse(url)
         netloc = url_parsed.netloc
     logger.info("Netloc: '%s'" % (netloc))
-    sess_hash=""
-    if (not ENFORCE) or db.getNetloc(netloc):
+    sess_hash = ""
+    if not ENFORCE:
+        db.addNetloc(netloc)
+    if db.getNetloc(netloc):
         logger.info("Letting '%s' pass" % (netloc))
         print("OK", flush=True)
     else:
         logger.info("Blocking %s" % (netloc))
         hwm_uuid = str(uuid.uuid4())
-        
-        # query.update({TOKEN_NAME: hwm_uuid,"netloc": "dummy"})
+
         new_url = ParseResult(
             "http",
             "havewemet.local:8899",
@@ -151,8 +170,8 @@ while True:
             url_parsed.params,
             urlencode({TOKEN_NAME: hwm_uuid}),
             url_parsed.fragment,
-        ).geturl() # Let's hope this can't introduce XSS :P
-        
+        ).geturl()  # Let's hope this can't introduce XSS :P
+
         db.addToken(hwm_uuid)
         print("ERR message=%s" % (new_url), flush=True)
 con.close()
