@@ -1,5 +1,11 @@
 <html>
-	<h1>Security Warning</h1>
-	<p><em>You should definitely customize this page!</em></p>
-	<p>The requested service is unknown. <a href="%o">Click here to proceed!</a></p>
+    <head>
+        <!-- We need this to properly handle HTTPS -> HTTP -> HTTPS redirections -->
+        <meta name="referrer" content="unsafe-url">
+    </head>
+    <body>
+        <h1>Security Warning</h1>
+	    <p><em>You should definitely customize this page!</em></p>
+    	<p>The requested service is unknown. <a href="%o">Click here to proceed!</a></p>
+    </body>
 </html>

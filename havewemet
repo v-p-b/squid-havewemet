@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import logging
 import sys
 import sqlite3
+import threading
 import uuid
+import re
 from urllib.parse import (
     unquote,
     urlparse,
@@ -13,11 +17,54 @@ from urllib.parse import (
 
 TOKEN_NAME = "HAVEWEMETUUID"
 ENFORCE = True
+SRVHOST = "0.0.0.0"
+SRVPORT = 8899 
+SRVURL = "http://havewemet.local"
+
+TOKEN_RE = re.compile("%s=([0-9a-f-]+)" % (TOKEN_NAME))
+
+class HaveWeMetHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        referer = None
+        token = None
+        token_matcher = TOKEN_RE.search(self.path)
+        if "Referer" in self.headers:
+            referer = self.headers["Referer"]
+        if token_matcher is not None:
+            token = token_matcher.group(1)
+        if (referer is not None) and (token is not None) and ((not ENFORCE) or (srvDb.getToken(token))):
+            url_parsed = urlparse(referer)
+            netloc = url_parsed.netloc
+            if ":" not in netloc and url_parsed.scheme == 'https':
+                    netloc += ":443"
+            logger.info("Adding '%s'" % (netloc))
+            srvDb.addNetloc(netloc)
+            self.send_response(302)
+            self.send_header("Location", referer)
+            self.end_headers()
+        else:
+            self.send_response(403)
+            self.send_header("X-HWM-Requested", self.path)
+            if token:
+                self.send_header("X-HWM-Token", token)
+            self.end_headers()
+
+    # Supress default output
+    def log_message(self, format, *args):
+        pass
+
+def startServerThread():
+    # We need another SQLite connection for the new thread
+    global srvDb # TODO don't use globals
+    srvDb = DbConnector()
+    server = HTTPServer((SRVHOST, SRVPORT), HaveWeMetHandler)
+    server.serve_forever()
+    
 
 # Wrapper class to hide DB implementation
 class DbConnector(object):
     def __init__(self):
-        self.con = sqlite3.connect(":memory:")
+        self.con = sqlite3.connect("/tmp/havewemet.db")
         self.con.execute(
             "create table if not exists netlocs(netloc varchar(255) unique)"
         )
@@ -68,34 +115,44 @@ class DbConnector(object):
 
 
 db = DbConnector()
+srvDb = None
+
+logger = logging.getLogger("havewemet")
+logger.setLevel(logging.DEBUG)
+
+fh = logging.FileHandler('/tmp/spam.log')
+logger.addHandler(fh)
+
+srvThread = threading.Thread(target = startServerThread)
+srvThread.start()
 
 while True:
     info = sys.stdin.readline()
-    url = unquote(info.split(" ")[0].strip())
-    url_parsed = urlparse(url)
-    query = dict(parse_qsl(url_parsed.query))
-    netloc = url_parsed.netloc
+    logger.info(info)
+    netloc = info.split(" ")[0].strip()
+    if info.startswith("http"):
+        url = unquote(info.split(" ")[0].strip())
+        url_parsed = urlparse(url)
+        netloc = url_parsed.netloc
+    logger.info("Netloc: '%s'" % (netloc))
     sess_hash=""
-    if (not ENFORCE) or (TOKEN_NAME in query) or db.getSession(sess_hash):
-        if (not ENFORCE) or (db.getToken(query[TOKEN_NAME])) or db.getSession(sess_hash):
-            db.addNetloc(netloc)
-            print("OK", flush=True)
-        else:
-            # TODO Alert?
-            pass
-    elif db.getNetloc(netloc):
+    if (not ENFORCE) or db.getNetloc(netloc):
+        logger.info("Letting '%s' pass" % (netloc))
         print("OK", flush=True)
     else:
+        logger.info("Blocking %s" % (netloc))
         hwm_uuid = str(uuid.uuid4())
-        query.update({TOKEN_NAME: hwm_uuid})
+        
+        # query.update({TOKEN_NAME: hwm_uuid,"netloc": "dummy"})
         new_url = ParseResult(
-            url_parsed.scheme,
-            url_parsed.netloc,
-            url_parsed.path,
+            "http",
+            "havewemet.local:8899",
+            "/",
             url_parsed.params,
-            urlencode(query),
+            urlencode({TOKEN_NAME: hwm_uuid}),
             url_parsed.fragment,
         ).geturl() # Let's hope this can't introduce XSS :P
+        
         db.addToken(hwm_uuid)
         print("ERR message=%s" % (new_url), flush=True)
 con.close()

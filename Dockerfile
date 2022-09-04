@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim
 RUN apt-get update
-RUN apt-get install -y build-essential openssl wget libssl-dev python3
+RUN apt-get install -y build-essential openssl wget libssl-dev python3 sqlite3
 RUN wget http://www.squid-cache.org/Versions/v5/squid-5.6.tar.gz
 RUN tar -xzvf squid-5.6.tar.gz
 WORKDIR squid-5.6
@@ -18,5 +18,6 @@ RUN chmod o+x /opt/havewemet/havewemet
 COPY havewemet.html /usr/local/squid/share/errors/templates/havewemet.html
 
 EXPOSE 3128/tcp
+EXPOSE 8899/tcp
 
 CMD ["/usr/local/squid/sbin/squid","-NCd1"]
