@@ -67,6 +67,7 @@ Known issues
 * This won't work if some malware expects the splash page and extracts the verification token. This is outside of our threat model.
 * Tokens and netlocs are not connected. I couldn't see a plausible attack vector for this, if you find one, please use the Issue tracker!
 * Duplicate GET parameters in the original request are probably not handled properly.
+* Sites with HSTS and HPKP are not supported
 
 TODO
 ----
